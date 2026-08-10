@@ -1,2 +1,7 @@
-# T-HE
-Text-Hex Editor
+中文
+
+未完成
+
+English
+
+Incomplete
