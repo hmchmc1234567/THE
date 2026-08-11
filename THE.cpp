@@ -133,6 +133,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				std::string str(text.begin(), text.end());
 				WriteFile(hFile, str.c_str(), str.size(), &writeLen, nullptr);
 			}
+			CloseHandle(hFile);
 			break;
 		}
 		case IDC_CHECK_BINARY: {
