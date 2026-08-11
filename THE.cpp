@@ -13,11 +13,13 @@ HWND hEdit;
 HWND hCheckBinary;
 std::wstring currPath;
 bool isBinary = false;
+std::vector<BYTE> dataBuf;
 
 WNDPROC g_OldEditProc = NULL;
 
 LRESULT CALLBACK HexEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	if (msg == WM_CHAR) {
+	switch (msg) {
+	case WM_CHAR: {
 		if (!isBinary) return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
 		WCHAR ch = (WCHAR)wParam;
 		if (ch == 0x08 || ch == L' ' || (ch >= L'0' && ch <= L'9') || (ch >= L'A' && ch <= L'F')) {
@@ -27,11 +29,37 @@ LRESULT CALLBACK HexEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
 			SendMessage(hwnd, WM_CHAR, (WPARAM)towupper(ch), lParam);
 			return 0;
 		}
-		else {
-			return 0;
-		}
+		return 0;
 	}
-	return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
+	case WM_PASTE: {
+		if (!isBinary) return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
+		if (!OpenClipboard(hwnd)) return 0;
+		std::wstring clipWStr;
+		HANDLE hClipData = GetClipboardData(CF_UNICODETEXT);
+		if (hClipData) {
+			const WCHAR* pData = (const WCHAR*)GlobalLock(hClipData);
+			if (pData) clipWStr = pData;
+			GlobalUnlock(hClipData);
+		}
+		CloseClipboard();
+		if (clipWStr.empty()) return 0;
+		int ansiLen = WideCharToMultiByte(CP_ACP, 0, clipWStr.c_str(), -1, NULL, 0, NULL, NULL);
+		std::vector<BYTE> ansiBuf(ansiLen, 0);
+		WideCharToMultiByte(CP_ACP, 0, clipWStr.c_str(), -1, (char*)ansiBuf.data(), ansiLen, NULL, NULL);
+		std::wstring hexResult;
+		for (int i = 0; i < ansiLen - 1; i++) {
+			WCHAR tmp[8];
+			swprintf_s(tmp, L"%02X ", ansiBuf[i]);
+			hexResult += tmp;
+		}
+		if (!hexResult.empty()) hexResult.pop_back();
+		SendMessage(hwnd, EM_REPLACESEL, TRUE, (LPARAM)hexResult.c_str());
+		return 0;
+	}
+	default:
+		return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
+	}
+	return 0;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -68,6 +96,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		case IDC_BTN_NEW: {
 			SetWindowText(hEdit, L"");
 			currPath.clear();
+			dataBuf.clear();
 			break;
 		}
 		case IDC_BTN_OPEN: {
@@ -88,14 +117,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				);
 				if (hFile == INVALID_HANDLE_VALUE) break;
 				DWORD fileSize = GetFileSize(hFile, nullptr);
-				std::vector<BYTE> buffer(fileSize);
+				dataBuf.resize(fileSize);
 				DWORD readLen;
-				ReadFile(hFile, buffer.data(), fileSize, &readLen, nullptr);
+				ReadFile(hFile, dataBuf.data(), fileSize, &readLen, nullptr);
 				CloseHandle(hFile);
 				SetWindowText(hEdit, L"");
 				if (isBinary) {
 					std::wstring hexStr;
-					for (auto b : buffer) {
+					for (auto b : dataBuf) {
 						wchar_t hex[4];
 						swprintf_s(hex, L"%02X ", b);
 						hexStr += hex;
@@ -103,13 +132,35 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 					SetWindowText(hEdit, hexStr.c_str());
 				}
 				else {
-					std::string str(buffer.begin(), buffer.end());
+					std::string str(dataBuf.begin(), dataBuf.end());
 					SetWindowTextA(hEdit, str.c_str());
 				}
 			}
 			break;
 		}
 		case IDC_BTN_SAVE: {
+			int textLen = GetWindowTextLength(hEdit);
+			std::wstring text(textLen + 1, L'\0');
+			GetWindowText(hEdit, text.data(), textLen + 1);
+			dataBuf.clear();
+			if (isBinary) {
+				std::wstring cleanedText;
+				for (auto ch : text) {
+					if (iswspace(ch)) continue;
+					cleanedText += ch;
+				}
+				for (size_t i = 0; i < cleanedText.size(); i += 2) {
+					if (i + 1 >= cleanedText.size()) break;
+					std::wstring byteStr = cleanedText.substr(i, 2);
+					BYTE byte = (BYTE)std::stoi(byteStr, nullptr, 16);
+					dataBuf.push_back(byte);
+				}
+			}
+			else {
+				int ansiLen = WideCharToMultiByte(CP_ACP, 0, text.c_str(), -1, NULL, 0, NULL, NULL);
+				dataBuf.resize(ansiLen - 1);
+				WideCharToMultiByte(CP_ACP, 0, text.c_str(), -1, (char*)dataBuf.data(), ansiLen, NULL, NULL);
+			}
 			if (currPath.empty()) {
 				OPENFILENAME ofn = { 0 };
 				WCHAR szFile[MAX_PATH] = { 0 };
@@ -123,9 +174,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				if (!GetSaveFileName(&ofn)) break;
 				currPath = szFile;
 			}
-			int textLen = GetWindowTextLength(hEdit);
-			std::wstring text(textLen + 1, L'\0');
-			GetWindowText(hEdit, text.data(), textLen + 1);
 			HANDLE hFile = CreateFile(
 				currPath.c_str(), GENERIC_WRITE, 0, NULL,
 				CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL
@@ -135,60 +183,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				break;
 			}
 			DWORD writeLen;
-			if (isBinary) {
-				std::vector<BYTE> rawBytes;
-				std::wstring cleanedText;
-				for (auto ch : text) {
-					if (iswspace(ch)) continue;
-					cleanedText += ch;
-				}
-				for (size_t i = 0; i < cleanedText.size(); i += 2) {
-					if (i + 1 >= cleanedText.size()) break;
-					std::wstring byteStr = cleanedText.substr(i, 2);
-					BYTE byte = (BYTE)std::stoi(byteStr, nullptr, 16);
-					rawBytes.push_back(byte);
-				}
-				WriteFile(hFile, rawBytes.data(), rawBytes.size(), &writeLen, nullptr);
-			}
-			else {
-				std::string str(text.begin(), text.end());
-				WriteFile(hFile, str.c_str(), str.size(), &writeLen, nullptr);
-			}
+			WriteFile(hFile, dataBuf.data(), dataBuf.size(), &writeLen, nullptr);
 			CloseHandle(hFile);
 			break;
 		}
 		case IDC_CHECK_BINARY: {
 			isBinary = (SendMessage(hCheckBinary, BM_GETCHECK, 0, 0) == BST_CHECKED);
-			int textLen = GetWindowTextLength(hEdit);
-			std::wstring text(textLen + 1, L'\0');
-			GetWindowText(hEdit, text.data(), textLen + 1);
+			SetWindowText(hEdit, L"");
 			if (isBinary) {
-				int ansiLen = WideCharToMultiByte(CP_ACP, 0, text.c_str(), textLen, NULL, 0, NULL, NULL);
-				std::string data(ansiLen, '\0');
-				WideCharToMultiByte(CP_ACP, 0, text.c_str(), textLen, &data[0], ansiLen, NULL, NULL);
-				std::wstring hexResult;
-				for (auto c : data) {
-					wchar_t buf[4];
-					swprintf_s(buf, L"%02X ", (unsigned char)c);
-					hexResult += buf;
+				std::wstring hexStr;
+				for (auto b : dataBuf) {
+					wchar_t hex[4];
+					swprintf_s(hex, L"%02X ", b);
+					hexStr += hex;
 				}
-				SetWindowText(hEdit, hexResult.c_str());
+				SetWindowText(hEdit, hexStr.c_str());
 			}
 			else {
-				std::wstring cleanedText;
-				for (auto ch : text) {
-					if (iswspace(ch)) continue;
-					cleanedText += ch;
-				}
-				std::vector<BYTE> rawBytes;
-				for (size_t i = 0; i < cleanedText.size(); i += 2) {
-					if (i + 1 >= cleanedText.size()) break;
-					std::wstring byteStr = cleanedText.substr(i, 2);
-					BYTE byte = (BYTE)std::stoi(byteStr, nullptr, 16);
-					rawBytes.push_back(byte);
-				}
-				std::string ansiText(rawBytes.begin(), rawBytes.end());
-				SetWindowTextA(hEdit, ansiText.c_str());
+				std::string str(dataBuf.begin(), dataBuf.end());
+				SetWindowTextA(hEdit, str.c_str());
 			}
 			SendMessage(hEdit, EM_EMPTYUNDOBUFFER, 0, 0);
 			break;
