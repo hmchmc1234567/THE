@@ -169,7 +169,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				std::wstring hexResult;
 				for (auto c : data) {
 					wchar_t buf[4];
-					swprintf_s(buf, L"%02X ", c);
+					swprintf_s(buf, L"%02X ", (unsigned char)c);
 					hexResult += buf;
 				}
 				SetWindowText(hEdit, hexResult.c_str());
