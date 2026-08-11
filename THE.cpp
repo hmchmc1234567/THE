@@ -14,6 +14,26 @@ HWND hCheckBinary;
 std::wstring currPath;
 bool isBinary = false;
 
+WNDPROC g_OldEditProc = NULL;
+
+LRESULT CALLBACK HexEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+	if (msg == WM_CHAR) {
+		if (!isBinary) return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
+		WCHAR ch = (WCHAR)wParam;
+		if (ch == 0x08 || ch == L' ' || (ch >= L'0' && ch <= L'9') || (ch >= L'A' && ch <= L'F')) {
+			return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
+		}
+		else if (ch >= L'a' && ch <= L'f') {
+			SendMessage(hwnd, WM_CHAR, (WPARAM)towupper(ch), lParam);
+			return 0;
+		}
+		else {
+			return 0;
+		}
+	}
+	return CallWindowProc(g_OldEditProc, hwnd, msg, wParam, lParam);
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
 	case WM_CREATE: {
@@ -23,6 +43,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			10, 45, 560, 360,
 			hwnd, (HMENU)IDC_EDIT_CONTENT, ((LPCREATESTRUCT)lParam)->hInstance, NULL
 		);
+		g_OldEditProc = (WNDPROC)SetWindowLongPtr(hEdit, GWLP_WNDPROC, (LONG_PTR)HexEditProc);
 		CreateWindow(
 			L"BUTTON", L"新建", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 10, 50, 25,
 			hwnd, (HMENU)IDC_BTN_NEW, ((LPCREATESTRUCT)lParam)->hInstance, NULL
@@ -142,9 +163,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			std::wstring text(textLen + 1, L'\0');
 			GetWindowText(hEdit, text.data(), textLen + 1);
 			if (isBinary) {
-				int ansiLen = WideCharToMultiByte(CP_ACP, 0, text.c_str(), -1, NULL, 0, NULL, NULL);
+				int ansiLen = WideCharToMultiByte(CP_ACP, 0, text.c_str(), textLen, NULL, 0, NULL, NULL);
 				std::string data(ansiLen, '\0');
-				WideCharToMultiByte(CP_ACP, 0, text.c_str(), -1, &data[0], ansiLen, NULL, NULL);
+				WideCharToMultiByte(CP_ACP, 0, text.c_str(), textLen, &data[0], ansiLen, NULL, NULL);
 				std::wstring hexResult;
 				for (auto c : data) {
 					wchar_t buf[4];
@@ -172,49 +193,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			SendMessage(hEdit, EM_EMPTYUNDOBUFFER, 0, 0);
 			break;
 		}
-		}
-		break;
-	}
-	case WM_CHAR: {
-		if (!isBinary) break;
-		WCHAR ch = (WCHAR)wParam;
-		switch (ch) {
-		case VK_BACK:
-		case VK_DELETE:
-		case VK_LEFT:
-		case VK_RIGHT:
-		case VK_UP:
-		case VK_DOWN:
-		case VK_HOME:
-		case VK_END:
-		case L' ':
-		case L'0':
-		case L'1':
-		case L'2':
-		case L'3':
-		case L'4':
-		case L'5':
-		case L'6':
-		case L'7':
-		case L'8':
-		case L'9':
-		case L'A':
-		case L'B':
-		case L'C':
-		case L'D':
-		case L'E':
-		case L'F':
-			break;
-		case L'a':
-		case L'b':
-		case L'c':
-		case L'd':
-		case L'e':
-		case L'f':
-			SendMessage(hEdit, EM_REPLACESEL, TRUE, (LPARAM)std::wstring(1, towupper(ch)).c_str());
-			break;
-		default:
-			return 0;
 		}
 		break;
 	}
