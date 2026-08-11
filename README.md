@@ -1,7 +1,7 @@
 中文
 
-添加了简单的 ANSI 文本与十六进制的读取与编辑
+这是一个同时支持文本编辑与十六进制编辑的编辑器。
 
 English
 
-Added simple ANSI text and hex reading & editing capabilities.
+This is an editor that supports both text editing and hex editing.
