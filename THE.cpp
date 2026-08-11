@@ -1,4 +1,4 @@
-#include <Windows.h>
+Ôªø#include <Windows.h>
 #include <string>
 #include <vector>
 
@@ -24,19 +24,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			hwnd, (HMENU)IDC_EDIT_CONTENT, ((LPCREATESTRUCT)lParam)->hInstance, NULL
 		);
 		CreateWindow(
-			L"BUTTON", L"–¬Ω®", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 10, 50, 25,
+			L"BUTTON", L"Êñ∞Âª∫", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 10, 50, 25,
 			hwnd, (HMENU)IDC_BTN_NEW, ((LPCREATESTRUCT)lParam)->hInstance, NULL
 		);
 		CreateWindow(
-			L"BUTTON", L"¥Úø™", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 70, 10, 50, 25,
+			L"BUTTON", L"ÊâìÂºÄ", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 70, 10, 50, 25,
 			hwnd, (HMENU)IDC_BTN_OPEN, ((LPCREATESTRUCT)lParam)->hInstance, NULL
 		);
 		CreateWindow(
-			L"BUTTON", L"±£¥Ê", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 130, 10, 50, 25,
+			L"BUTTON", L"‰øùÂ≠ò", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 130, 10, 50, 25,
 			hwnd, (HMENU)IDC_BTN_SAVE, ((LPCREATESTRUCT)lParam)->hInstance, NULL
 		);
 		hCheckBinary = CreateWindow(
-			L"BUTTON", L"∂˛Ω¯÷∆", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 190, 10, 75, 25,
+			L"BUTTON", L"‰∫åËøõÂà∂", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 190, 10, 75, 25,
 			hwnd, (HMENU)IDC_CHECK_BINARY, ((LPCREATESTRUCT)lParam)->hInstance, NULL
 		);
 		break;
@@ -56,7 +56,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			ofn.hwndOwner = hwnd;
 			ofn.lpstrFile = szFile;
 			ofn.nMaxFile = MAX_PATH;
-			ofn.lpstrFilter = L"À˘”–Œƒº˛(*.*)\0*.*\0Œƒ±æŒƒº˛(*.txt)\0*.txt\0";
+			ofn.lpstrFilter = L"ÊâÄÊúâÊñá‰ª∂(*.*)\0*.*\0ÊñáÊú¨Êñá‰ª∂(*.txt)\0*.txt\0";
 			ofn.nFilterIndex = 1;
 			ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
 			if (GetOpenFileName(&ofn)) {
@@ -74,7 +74,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				SetWindowText(hEdit, L"");
 				if (isBinary) {
 					std::wstring hexStr;
-					for (BYTE b : buffer) {
+					for (auto b : buffer) {
 						wchar_t hex[4];
 						swprintf_s(hex, L"%02X ", b);
 						hexStr += hex;
@@ -96,7 +96,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				ofn.hwndOwner = hwnd;
 				ofn.lpstrFile = szFile;
 				ofn.nMaxFile = MAX_PATH;
-				ofn.lpstrFilter = L"À˘”–Œƒº˛(*.*)\0*.*\0Œƒ±æŒƒº˛(*.txt)\0*.txt\0";
+				ofn.lpstrFilter = L"ÊâÄÊúâÊñá‰ª∂(*.*)\0*.*\0ÊñáÊú¨Êñá‰ª∂(*.txt)\0*.txt\0";
 				ofn.nFilterIndex = 1;
 				ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
 				if (!GetSaveFileName(&ofn)) break;
@@ -110,7 +110,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL
 			);
 			if (hFile == INVALID_HANDLE_VALUE) {
-				MessageBox(hwnd, L"Œﬁ∑®±£¥ÊŒƒº˛", L"¥ÌŒÛ", MB_ICONERROR);
+				MessageBox(hwnd, L"Êó†Ê≥ï‰øùÂ≠òÊñá‰ª∂", L"ÈîôËØØ", MB_ICONERROR);
 				break;
 			}
 			DWORD writeLen;
@@ -146,7 +146,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				std::string data(ansiLen, '\0');
 				WideCharToMultiByte(CP_ACP, 0, text.c_str(), -1, &data[0], ansiLen, NULL, NULL);
 				std::wstring hexResult;
-				for (unsigned char c : data) {
+				for (auto c : data) {
 					wchar_t buf[4];
 					swprintf_s(buf, L"%02X ", c);
 					hexResult += buf;
@@ -172,7 +172,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			SendMessage(hEdit, EM_EMPTYUNDOBUFFER, 0, 0);
 			break;
 		}
-			break;
 		}
 		break;
 	}
